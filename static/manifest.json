@@ -31,6 +31,7 @@
   "web_accessible_resources": [
     "background-content-page.js",
     "page.css",
-    "assets/*"
+    "assets/*",
+    "src/*"
   ]
 }

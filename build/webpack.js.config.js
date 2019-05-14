@@ -1,6 +1,6 @@
 const TerserWebpackPlugin = require('terser-webpack-plugin')
+const MiniCssExtractPlugin = require('mini-css-extract-plugin')
 const CopyWebpackPlugin = require('copy-webpack-plugin')
-const { EXTENSION_ORIGIN_PLACEHOLDER } = require('esm')(module)('../src/constants/extension-origin')
 const {
   approot,
   defaultArgv,
@@ -31,12 +31,13 @@ module.exports = (env, { mode } = defaultArgv) => ({
       { test: /\.js$/, use: [ 'cache-loader', 'babel-loader' ] },
       generateStyleLoader({ mode }),
       generateUrlLoaderForImages(),
-      generateFileLoaderForImages({ publicPath: `${EXTENSION_ORIGIN_PLACEHOLDER}/` }),
+      generateFileLoaderForImages({ publicPath: '/' }),
       generateFileLoaderForOtherAssets(),
     ],
   },
 
   plugins: [
+    new MiniCssExtractPlugin(),
     new CopyWebpackPlugin([ {
       from: approot('static'),
       to: approot('dist'),

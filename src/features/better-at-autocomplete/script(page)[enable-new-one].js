@@ -3,7 +3,7 @@ import TributeSearch from 'tributejs/src/TributeSearch'
 import triggerEvent from 'compat-trigger-event'
 import replaceExtensionOrigin from '@libs/replaceExtensionOrigin'
 import getLoggedInUserId from '@libs/getLoggedInUserId'
-import unknownUserAvatar_ from '@assets/images/unknown-user.jpg'
+import unknownUserAvatar_ from '../../../assets/images/unknown-user.jpg'
 
 const STORAGE_KEY = 'friends-list'
 const STORAGE_AREA_NAME = 'session'

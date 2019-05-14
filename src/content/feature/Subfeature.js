@@ -16,7 +16,7 @@ export default ({ messaging, bridge, modules }) => class Subfeature {
     if (style) {
       this.style = {
         element: null,
-        code: style,
+        url: style,
       }
     }
 
@@ -125,7 +125,7 @@ export default ({ messaging, bridge, modules }) => class Subfeature {
 
     this.style.element = loadAsset({
       type: 'style',
-      code: this.style.code,
+      url: this.style.url,
       dataset: pick(this, [ 'featureName', 'subfeatureName' ]),
       mount: insertBeforeBody,
     })

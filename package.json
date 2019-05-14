@@ -100,6 +100,7 @@
     "eslint-plugin-import": "^2.14.0",
     "eslint-plugin-react": "^7.12.4",
     "esm": "^3.2.22",
+    "extract-loader": "^3.1.0",
     "file-loader": "^3.0.1",
     "jest": "^24.7.1",
     "jest-webpack-resolver": "^0.3.0",

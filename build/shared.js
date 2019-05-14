@@ -1,6 +1,7 @@
 const path = require('path')
 const MiniCssExtractPlugin = require('mini-css-extract-plugin')
 const approot = require('approot')(path.resolve(__dirname, '..'))
+const { EXTENSION_ORIGIN_PLACEHOLDER } = require('esm')(module)('../src/constants/extension-origin')
 
 const BUNDLE_SIZE_LIMIT = 768 * 1024 // in bytes
 
@@ -51,6 +52,7 @@ const generateBaseConfig = mode => ({
     maxAssetSize: BUNDLE_SIZE_LIMIT,
   },
 })
+const keepRelativePath = file => path.relative(approot(), file)
 
 const generateStyleLoader = ({ extract = false, mode } = {}) => {
   // TODO: 不能控制是否输出 SourceMap，bug？
@@ -58,23 +60,38 @@ const generateStyleLoader = ({ extract = false, mode } = {}) => {
   const sourceMap = mode === 'development'
   const cssLoaders = [ 'css-loader', 'postcss-loader', 'less-loader' ]
 
+  if (extract) {
+    return {
+      test: /\.(css|less$)/,
+      use: [
+        MiniCssExtractPlugin.loader,
+        'cache-loader',
+        ...cssLoaders.map(loader => ({ loader, options: { sourceMap } })),
+      ],
+    }
+  }
+
   return {
     test: /\.(css|less$)/,
     use: [
-      extract
-        // 把 CSS 代码从最终的打包结果中提取出来，写入单独的 CSS 文件
-        ? MiniCssExtractPlugin.loader
-        // 对于把 CSS 代码保留在打包结果的情况，借助这个 loader 来省去每次都要写 `.toString()` 的麻烦
-        : 'to-string-loader',
-      'cache-loader',
-      ...cssLoaders.map(loader => ({ loader, options: { sourceMap } })),
+      {
+        loader: 'file-loader',
+        options: {
+          name: file => path.relative(approot(), file).replace('.less', '.css'),
+          publicPath: `${EXTENSION_ORIGIN_PLACEHOLDER}/`,
+        },
+      },
+      'extract-loader',
+      { loader: 'css-loader', options: { importLoaders: 2 } },
+      'postcss-loader',
+      'less-loader',
+      // ...cssLoaders.map(loader => ({ loader, options: { sourceMap } })),
     ],
   }
 }
 
 // 输出到 dist 目录后，仍然保持原来的相对目录结构
 // 比如 <root>/assets/image.png 输出到 <dist>/assets/image.png
-const keepRelativePath = file => path.relative(approot(), file)
 
 const reImageExt = /\.(jpe?g|png|gif|svg)$/
 const reBase64 = /\.base64\./
