@@ -14,14 +14,14 @@ import isStatusElement from '@libs/isStatusElement'
 import isElementInDocument from '@libs/isElementInDocument'
 import every from '@libs/promiseEvery'
 
-const ATTRIBUTE_CACHE_ID = 'sf-contextual-statuses'
+// 表示这条消息可以展开上下文，主要用于辅助 CSS
+const ATTRIBUTE_STATUS_WITH_CONTEXT = 'sf-contextual-statuses'
 
 export default context => {
   const { readOptionValue, requireModules, elementCollection } = context
   const { timelineElementObserver } = requireModules([ 'timelineElementObserver' ])
 
-  const cacheMap = new Map()
-  let cacheIdGen = 0
+  const instanceMap = new WeakMap()
 
   elementCollection.add({
     stream: '#stream',
@@ -215,20 +215,6 @@ export default context => {
     return { statusHtml, unavailableReason, nextStatusId, hasPhoto }
   }
 
-  function getCacheId(li) {
-    let cacheId
-
-    if (li.hasAttribute(ATTRIBUTE_CACHE_ID)) {
-      cacheId = parseInt(li.getAttribute(ATTRIBUTE_CACHE_ID), 10)
-    } else {
-      cacheId = cacheIdGen++
-      li.setAttribute(ATTRIBUTE_CACHE_ID, cacheId)
-    }
-
-    return cacheId
-  }
-
-
   function hasContextualStatuses(li) {
     return select.exists('.stamp .reply a', li)
   }
@@ -239,23 +225,7 @@ export default context => {
     // 必须是回复或转发消息，否则忽略
     if (!hasContextualStatuses(li)) return
 
-    const cacheId = getCacheId(li)
-
-    // 饭否在加载下一页消息后，会直接使用 innerHTML 的方式覆写当前 HTML
-    // 这就导致原本存在的 DOM 结构被替换掉
-    // MutationObserver 的 mutationRecord.addedNodes 中会包含旧消息
-    // 而这些旧消息中已经展开了的部分所绑定的监听事件会丢失，也就是「dead instance」
-    // 我们用原来可以交互的实例（alive instance）替换掉新的实例
-    if (cacheMap.has(cacheId)) {
-      const aliveInstance = cacheMap.get(cacheId)
-      const maybeDeadInstance = li.nextElementSibling
-
-      if (maybeDeadInstance?.matches(`.${CLASSNAME_CONTAINER}`)) {
-        maybeDeadInstance.replaceWith(aliveInstance)
-      }
-
-      return
-    }
+    li.setAttribute(ATTRIBUTE_STATUS_WITH_CONTEXT, '')
 
     const replyLink = select('.stamp .reply a', li)
     const props = {
@@ -268,7 +238,7 @@ export default context => {
     preactRender(<ContextualStatuses {...props} />, instance => {
       // 调整插入位置
       li.after(instance)
-      cacheMap.set(cacheId, instance)
+      instanceMap.set(li, instance)
     })
   }
 
@@ -276,16 +246,9 @@ export default context => {
     if (!isStatusElement(li)) return
     if (!hasContextualStatuses(li)) return
 
-    const { stream } = elementCollection.getAll()
-    const cacheId = getCacheId(li)
+    const instance = instanceMap.get(li)
 
-    // 饭否载入新消息的方式是，直接修改 innerHTML，这会导致原来存在的消息被重新渲染
-    // 原来存在的消息的 DOM 元素会被删除，然后出现新的完全相同 HTML 结构的 DOM 元素
-    // 我们需要判断是否为这种情况
-    if (select.exists(`[${ATTRIBUTE_CACHE_ID}="${cacheId}"]`, stream)) return
-
-    if (cacheMap.has(cacheId)) {
-      const instance = cacheMap.get(cacheId)
+    if (instance) {
       const elements = select.all('button, li', instance)
 
       // 如果已经不存在于 DOM 中，则不需要出场动画等操作
@@ -302,7 +265,7 @@ export default context => {
         instance.remove()
       }
 
-      cacheMap.delete(cacheId)
+      instanceMap.delete(li)
     }
   }
 
@@ -333,10 +296,9 @@ export default context => {
 
     onUnload() {
       timelineElementObserver.removeCallback(mutationObserverCallback)
-      cacheMap.clear()
 
-      for (const li of select.all(`[${ATTRIBUTE_CACHE_ID}]`)) {
-        li.removeAttribute(ATTRIBUTE_CACHE_ID)
+      for (const li of select.all(`[${ATTRIBUTE_STATUS_WITH_CONTEXT}]`)) {
+        li.removeAttribute(ATTRIBUTE_STATUS_WITH_CONTEXT)
       }
 
       for (const container of select.all(`.${CLASSNAME_CONTAINER}`)) {
